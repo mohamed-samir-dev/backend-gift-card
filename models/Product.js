@@ -5,10 +5,12 @@ const productSchema = new mongoose.Schema({
   title:       { type: String, required: true, trim: true },
   brief:       { type: String },
   description: { type: String },
+  details:     { type: Map, of: String },
   image:       { type: String },
   price:       { type: Number, required: true },
   currency:    { type: String, default: 'USD' },
-  isActive:    { type: Boolean, default: true },
+  isActive:         { type: Boolean, default: true },
+  unlimitedStock:   { type: Boolean, default: false },
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 // stock is computed from available cards — no manual field needed
