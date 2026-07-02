@@ -18,12 +18,16 @@ exports.createOrder = async (req, res) => {
     if (!product || !product.isActive) throw new Error('Product not available');
 
     // Reserve one available card atomically
-    const card = await Card.findOneAndUpdate(
+    let card = await Card.findOneAndUpdate(
       { product: productId, status: 'available' },
       { status: 'reserved' },
       { new: true, session }
     );
-    if (!card) throw new Error('No cards in stock');
+    if (!card) {
+      if (!product.unlimitedStock) throw new Error('No cards in stock');
+      // unlimitedStock: create a virtual card
+      card = (await Card.create([{ product: productId, status: 'reserved' }], { session }))[0];
+    }
 
     const wallet = await Wallet.findOne({ user: req.user._id }).session(session);
     const setting = await Setting.findOne().session(session);
