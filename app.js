@@ -21,6 +21,7 @@ app.use('/api/categories',    require('./routes/categories'));
 app.use('/api/products',      require('./routes/products'));
 app.use('/api/cards',         require('./routes/cards'));
 app.use('/api/orders',        require('./routes/orders'));
+app.use('/api/cart',          require('./routes/cart'));
 app.use('/api/wallets',       require('./routes/wallets'));
 app.use('/api/payments',      require('./routes/payments'));
 app.use('/api/invoices',      require('./routes/invoices'));
