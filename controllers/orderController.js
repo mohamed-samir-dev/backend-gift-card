@@ -13,7 +13,7 @@ exports.createOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { productId, couponDiscount = 0 } = req.body;
+    const { productId, couponDiscount = 0, paymentMethod = 'cod' } = req.body;
     const product = await Product.findById(productId).session(session);
     if (!product || !product.isActive) throw new Error('Product not available');
 
@@ -35,15 +35,16 @@ exports.createOrder = async (req, res) => {
     const subtotal = product.price - couponDiscount;
     const total = subtotal + (subtotal * tax) / 100;
 
-    if (wallet.balance < total) throw new Error('Insufficient wallet balance');
-
-    const balanceBefore = wallet.balance;
-    wallet.balance -= total;
-    wallet.totalSpent += total;
-    await wallet.save({ session });
+    if (paymentMethod === 'wallet') {
+      if (!wallet || wallet.balance < total) throw new Error('Insufficient wallet balance');
+      const balanceBefore = wallet.balance;
+      wallet.balance -= total;
+      wallet.totalSpent += total;
+      await wallet.save({ session });
+    }
 
     const order = (await Order.create([{
-      user: req.user._id, product: productId, card: card._id, price: total, status: 'completed', deliveredAt: new Date(),
+      user: req.user._id, product: productId, card: card._id, price: total, status: paymentMethod === 'wallet' ? 'completed' : 'pending', deliveredAt: paymentMethod === 'wallet' ? new Date() : null,
     }], { session }))[0];
 
     const invoice = (await Invoice.create([{
@@ -52,27 +53,29 @@ exports.createOrder = async (req, res) => {
       subtotal,
       tax: (subtotal * tax) / 100,
       total,
-      paymentMethod: 'wallet',
+      paymentMethod,
     }], { session }))[0];
 
     order.invoice = invoice._id;
     await order.save({ session });
 
-    card.status = 'sold';
-    card.soldTo = req.user._id;
-    card.soldAt = new Date();
+    card.status = paymentMethod === 'wallet' ? 'sold' : 'reserved';
+    card.soldTo = paymentMethod === 'wallet' ? req.user._id : undefined;
+    card.soldAt = paymentMethod === 'wallet' ? new Date() : undefined;
     await card.save({ session });
 
-    await WalletTransaction.create([{
-      user: req.user._id,
-      wallet: wallet._id,
-      type: 'purchase',
-      amount: total,
-      balanceBefore,
-      balanceAfter: wallet.balance,
-      order: order._id,
-      status: 'completed',
-    }], { session });
+    if (paymentMethod === 'wallet') {
+      await WalletTransaction.create([{
+        user: req.user._id,
+        wallet: wallet._id,
+        type: 'purchase',
+        amount: total,
+        balanceBefore: wallet.balance + total,
+        balanceAfter: wallet.balance,
+        order: order._id,
+        status: 'completed',
+      }], { session });
+    }
 
     await Notification.create([{
       user: req.user._id,

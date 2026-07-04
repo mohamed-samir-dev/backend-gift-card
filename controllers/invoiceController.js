@@ -15,6 +15,8 @@ exports.getInvoice = async (req, res) => {
 };
 
 exports.getAllInvoices = async (req, res) => {
-  const invoices = await Invoice.find().populate('order').sort('-createdAt');
+  const invoices = await Invoice.find()
+    .populate({ path: 'order', populate: { path: 'product user', select: 'title name email' } })
+    .sort('-createdAt');
   res.json(invoices);
 };
