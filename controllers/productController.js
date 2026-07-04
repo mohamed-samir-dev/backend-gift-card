@@ -1,17 +1,26 @@
 const Product = require('../models/Product');
+const Card = require('../models/Card');
 
 exports.getProducts = async (req, res) => {
-  const products = await Product.find({ isActive: true })
-    .populate('category', 'name slug')
-    .populate('stock');
+  const products = await Product.find({ isActive: true }).populate('category', 'name slug').lean();
+  const ids = products.map(p => p._id);
+  const counts = await Card.aggregate([
+    { $match: { product: { $in: ids }, status: 'available' } },
+    { $group: { _id: '$product', count: { $sum: 1 } } },
+  ]);
+  const countMap = Object.fromEntries(counts.map(c => [c._id.toString(), c.count]));
+  products.forEach(p => { p.stock = countMap[p._id.toString()] ?? 0; });
   res.json(products);
 };
 
 exports.getProduct = async (req, res) => {
-  const product = await Product.findById(req.params.id)
-    .populate('category', 'name slug')
-    .populate('stock');
+  const product = await Product.findById(req.params.id).populate('category', 'name slug').lean();
   if (!product) return res.status(404).json({ message: 'Product not found' });
+  if (!product.unlimitedStock) {
+    product.stock = await Card.countDocuments({ product: product._id, status: 'available' });
+  } else {
+    product.stock = 0;
+  }
   res.json(product);
 };
 

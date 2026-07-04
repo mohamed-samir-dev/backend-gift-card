@@ -12,4 +12,6 @@ const cardSchema = new mongoose.Schema({
   soldAt:     { type: Date },
 }, { timestamps: true });
 
+cardSchema.index({ product: 1, status: 1 });
+
 module.exports = mongoose.model('Card', cardSchema);
