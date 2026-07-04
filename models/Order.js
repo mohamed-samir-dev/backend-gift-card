@@ -7,8 +7,11 @@ const orderSchema = new mongoose.Schema({
   payment:     { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
   invoice:     { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
   price:       { type: Number, required: true },
-  status:      { type: String, enum: ['pending', 'completed', 'cancelled', 'refunded'], default: 'pending' },
-  deliveredAt: { type: Date },
+  status:          { type: String, enum: ['pending', 'completed', 'cancelled', 'refunded'], default: 'pending' },
+  deliveredAt:     { type: Date },
+  idempotencyKey:  { type: String, unique: true, sparse: true },
+  couponCode:      { type: String },
+  couponDiscount:  { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
