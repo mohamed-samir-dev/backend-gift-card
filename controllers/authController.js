@@ -3,14 +3,19 @@ const Wallet = require('../models/Wallet');
 const generateToken = require('../utils/generateToken');
 
 exports.register = async (req, res) => {
-  const { name, email, phone, password } = req.body;
-  const exists = await User.findOne({ email });
-  if (exists) return res.status(400).json({ message: 'Email already in use' });
-
-  const user = await User.create({ name, email, phone, password });
-  await Wallet.create({ user: user._id });
-
-  res.status(201).json({ token: generateToken(user._id), user: { _id: user._id, name, email, role: user.role } });
+  try {
+    const { name, email, phone, password } = req.body;
+    const user = await User.create({ name, email: email.toLowerCase().trim(), phone: phone?.trim(), password });
+    await Wallet.create({ user: user._id });
+    res.status(201).json({ token: generateToken(user._id), user: { _id: user._id, name, email: user.email, role: user.role } });
+  } catch (err) {
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      const msg = field === 'email' ? 'البريد الإلكتروني مسجل مسبقاً' : 'رقم الهاتف مسجل مسبقاً';
+      return res.status(409).json({ message: msg });
+    }
+    res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' });
+  }
 };
 
 exports.login = async (req, res) => {
