@@ -35,7 +35,12 @@ exports.recharge = async (req, res) => {
 };
 
 exports.getTransactions = async (req, res) => {
-  const txns = await WalletTransaction.find({ user: req.user._id }).sort('-createdAt');
+  const txns = await WalletTransaction
+    .find({ user: req.user._id })
+    .sort('-createdAt')
+    .populate('payment', 'gateway transactionId invoiceId status currency')
+    .populate('order', 'orderNumber')
+    .lean();
   res.json(txns);
 };
 
