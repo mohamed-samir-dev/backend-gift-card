@@ -9,18 +9,14 @@ exports.getProducts = async (req, res) => {
     { $group: { _id: '$product', count: { $sum: 1 } } },
   ]);
   const countMap = Object.fromEntries(counts.map(c => [c._id.toString(), c.count]));
-  products.forEach(p => { p.stock = countMap[p._id.toString()] ?? 0; });
+  products.forEach(p => { p.stock = p.unlimitedStock ? 20000 : (countMap[p._id.toString()] ?? 0); });
   res.json(products);
 };
 
 exports.getProduct = async (req, res) => {
   const product = await Product.findById(req.params.id).populate('category', 'name slug').lean();
   if (!product) return res.status(404).json({ message: 'Product not found' });
-  if (!product.unlimitedStock) {
-    product.stock = await Card.countDocuments({ product: product._id, status: 'available' });
-  } else {
-    product.stock = 0;
-  }
+    product.stock = product.unlimitedStock ? 20000 : await Card.countDocuments({ product: product._id, status: 'available' });
   res.json(product);
 };
 
