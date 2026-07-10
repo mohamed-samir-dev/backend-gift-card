@@ -2,7 +2,9 @@ const Product = require('../models/Product');
 const Card = require('../models/Card');
 
 exports.getProducts = async (req, res) => {
-  const products = await Product.find({ isActive: true }).populate('category', 'name slug').lean();
+  const filter = { isActive: true };
+  if (req.query.featured === 'true') filter.featured = true;
+  const products = await Product.find(filter).populate('category', 'name slug').lean();
   const ids = products.map(p => p._id);
   const counts = await Card.aggregate([
     { $match: { product: { $in: ids }, status: 'available' } },

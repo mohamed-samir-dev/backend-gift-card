@@ -11,6 +11,7 @@ const productSchema = new mongoose.Schema({
   currency:    { type: String, default: 'USD' },
   isActive:         { type: Boolean, default: true },
   unlimitedStock:   { type: Boolean, default: false },
+  featured:         { type: Boolean, default: false },
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 // stock is computed from available cards — no manual field needed
