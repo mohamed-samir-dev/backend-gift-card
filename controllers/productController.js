@@ -4,6 +4,10 @@ const Card = require('../models/Card');
 exports.getProducts = async (req, res) => {
   const filter = { isActive: true };
   if (req.query.featured === 'true') filter.featured = true;
+  if (req.query.category) {
+    const cat = await require('../models/Category').findOne({ slug: req.query.category });
+    if (cat) filter.category = cat._id;
+  }
   const products = await Product.find(filter).populate('category', 'name slug').lean();
   const ids = products.map(p => p._id);
   const counts = await Card.aggregate([
