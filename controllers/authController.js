@@ -20,11 +20,32 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password');
-  if (!user || !user.password) return res.status(401).json({ message: 'Invalid credentials' });
-  if (!(await user.matchPassword(password))) return res.status(401).json({ message: 'Invalid credentials' });
-  if (user.isBlocked) return res.status(403).json({ message: 'Account blocked' });
+  const user = await User.findOne({ email }).select('+password +loginAttempts +lockUntil');
+  if (!user || !user.password) return res.status(401).json({ message: 'بيانات غير صحيحة' });
+  if (user.isBlocked) return res.status(403).json({ message: 'الحساب محظور' });
 
+  // Check lock
+  if (user.lockUntil && user.lockUntil > Date.now()) {
+    const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    return res.status(429).json({ message: `الحساب مقفل مؤقتاً، حاول بعد ${mins} دقيقة` });
+  }
+
+  const isMatch = await user.matchPassword(password);
+  if (!isMatch) {
+    user.loginAttempts += 1;
+    if (user.loginAttempts >= 5) {
+      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+      user.loginAttempts = 0;
+      await user.save();
+      return res.status(429).json({ message: 'تم قفل الحساب لمدة 15 دقيقة بسبب كثرة المحاولات الخاطئة' });
+    }
+    await user.save();
+    return res.status(401).json({ message: `بيانات غير صحيحة، تبقى ${5 - user.loginAttempts} محاولات` });
+  }
+
+  // Success - reset attempts
+  user.loginAttempts = 0;
+  user.lockUntil = undefined;
   user.lastLogin = new Date();
   await user.save();
 

@@ -13,7 +13,13 @@ const userSchema = new mongoose.Schema({
   isBlocked:  { type: Boolean, default: false },
   avatar:     { type: String },
   lastLogin:  { type: Date },
+  loginAttempts: { type: Number, default: 0 },
+  lockUntil:     { type: Date },
 }, { timestamps: true });
+
+userSchema.virtual('isLocked').get(function () {
+  return this.lockUntil && this.lockUntil > Date.now();
+});
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) return next();
